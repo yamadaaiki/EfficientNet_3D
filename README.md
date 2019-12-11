@@ -2,6 +2,41 @@
 
 3D Version is based on top of [EfficientNet-Pytorch](https://github.com/lukemelas/EfficientNet-PyTorch).
 
+```python
+from efficientnet_pytorch_3d import EfficientNet3D
+import torch
+
+model = EfficientNet3D.from_name("efficientnet-b0", override_params={'num_classes': 2}, in_channels=1)
+
+from torchsummary import summary
+summary(model, input_size=(1, 200, 200, 200))
+
+model = model.cuda()
+inputs = torch.randn((1, 1, 200, 200, 200)).cuda()
+labels = torch.tensor([0]).cuda()
+# test forward
+num_classes = 2
+
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+model.train()
+for epoch in range(2):
+    # zero the parameter gradients
+    optimizer.zero_grad()
+
+    # forward + backward + optimize
+    outputs = model(inputs)
+    loss = criterion(outputs, labels)
+    loss.backward()
+    optimizer.step()
+
+    # print statistics
+    print('[%d] loss: %.3f' % (epoch + 1, loss.item()))
+
+print('Finished Training')
+```
+
 3D EfficientNet has a high GPU cost. Here, the ```block_args``` for the first block is altered from ```'r1_k3_s111_e1_i32_o16_se0.25'``` to ```'r1_k3_s222_e1_i32_o16_se0.25'``` to save GPU memories.
 
 Take an example from EfficientNet-b0 with an input size of (1, 200, 200, 200):

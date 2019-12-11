@@ -251,7 +251,7 @@ class BlockDecoder(object):
         return block_strings
 
 
-def efficientnet(width_coefficient=None, depth_coefficient=None, dropout_rate=0.2,
+def efficientnet3d(width_coefficient=None, depth_coefficient=None, dropout_rate=0.2,
                  drop_connect_rate=0.2, image_size=None, num_classes=1000):
     """ Creates a efficientnet model. """
 
@@ -285,7 +285,7 @@ def get_model_params(model_name, override_params):
     if model_name.startswith('efficientnet'):
         w, d, s, p = efficientnet_params(model_name)
         # note: all models have drop connect rate = 0.2
-        blocks_args, global_params = efficientnet(
+        blocks_args, global_params = efficientnet3d(
             width_coefficient=w, depth_coefficient=d, dropout_rate=p, image_size=s)
     else:
         raise NotImplementedError('model name is not pre-defined: %s' % model_name)

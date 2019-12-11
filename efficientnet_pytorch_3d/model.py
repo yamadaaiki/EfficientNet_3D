@@ -14,7 +14,7 @@ from .utils import (
     MemoryEfficientSwish,
 )
 
-class MBConvBlock(nn.Module):
+class MBConvBlock3D(nn.Module):
     """
     Mobile Inverted Residual Bottleneck Block
 
@@ -98,7 +98,7 @@ class MBConvBlock(nn.Module):
         self._swish = MemoryEfficientSwish() if memory_efficient else Swish()
 
 
-class EfficientNet(nn.Module):
+class EfficientNet3D(nn.Module):
     """
     An EfficientNet model. Most easily loaded with the .from_name or .from_pretrained methods
 
@@ -107,11 +107,11 @@ class EfficientNet(nn.Module):
         global_params (namedtuple): A set of GlobalParams shared between blocks
 
     Example:
-        model = EfficientNet.from_pretrained('efficientnet-b0')
+        model = EfficientNet3D.from_pretrained('efficientnet-b0')
 
     """
 
-    def __init__(self, blocks_args=None, global_params=None):
+    def __init__(self, blocks_args=None, global_params=None, in_channels=3):
         super().__init__()
         assert isinstance(blocks_args, list), 'blocks_args should be a list'
         assert len(blocks_args) > 0, 'block args must be greater than 0'
@@ -126,7 +126,6 @@ class EfficientNet(nn.Module):
         bn_eps = self._global_params.batch_norm_epsilon
 
         # Stem
-        in_channels = 1  # rgb
         out_channels = round_filters(32, self._global_params)  # number of output channels
         self._conv_stem = Conv3d(in_channels, out_channels, kernel_size=3, stride=2, bias=False)
         self._bn0 = nn.BatchNorm3d(num_features=out_channels, momentum=bn_mom, eps=bn_eps)
@@ -143,11 +142,11 @@ class EfficientNet(nn.Module):
             )
 
             # The first block needs to take care of stride and filter size increase.
-            self._blocks.append(MBConvBlock(block_args, self._global_params))
+            self._blocks.append(MBConvBlock3D(block_args, self._global_params))
             if block_args.num_repeat > 1:
                 block_args = block_args._replace(input_filters=block_args.output_filters, stride=1)
             for _ in range(block_args.num_repeat - 1):
-                self._blocks.append(MBConvBlock(block_args, self._global_params))
+                self._blocks.append(MBConvBlock3D(block_args, self._global_params))
 
         # Head
         in_channels = block_args.output_filters  # output of final block
@@ -200,27 +199,10 @@ class EfficientNet(nn.Module):
         return x
 
     @classmethod
-    def from_name(cls, model_name, override_params=None):
+    def from_name(cls, model_name, override_params=None, in_channels=3):
         cls._check_model_name_is_valid(model_name)
         blocks_args, global_params = get_model_params(model_name, override_params)
-        return cls(blocks_args, global_params)
-
-    @classmethod
-    def from_pretrained(cls, model_name, num_classes=1000, in_channels=3):
-        model = cls.from_name(model_name, override_params={'num_classes': num_classes})
-        load_pretrained_weights(model, model_name, load_fc=(num_classes == 1000))
-        if in_channels != 3:
-            Conv3d = get_same_padding_conv3d(image_size=model._global_params.image_size)
-            out_channels = round_filters(32, model._global_params)
-            model._conv_stem = Conv3d(in_channels, out_channels, kernel_size=3, stride=2, bias=False)
-        return model
-    
-    @classmethod
-    def from_pretrained(cls, model_name, num_classes=1000):
-        model = cls.from_name(model_name, override_params={'num_classes': num_classes})
-        load_pretrained_weights(model, model_name, load_fc=(num_classes == 1000))
-
-        return model
+        return cls(blocks_args, global_params, in_channels)
 
     @classmethod
     def get_image_size(cls, model_name):

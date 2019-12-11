@@ -12,11 +12,11 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'efficientnet_pytorch'
-DESCRIPTION = 'EfficientNet implemented in PyTorch.'
-URL = 'https://github.com/lukemelas/efficientnet_pytorch'
-EMAIL = 'lmelaskyriazi@college.harvard.edu'
-AUTHOR = 'Luke'
+NAME = 'efficientnet_pytorch_3d'
+DESCRIPTION = 'EfficientNet 3D implemented in PyTorch.'
+URL = 'https://github.com/shijianjian/efficientnet_pytorch_3d'
+EMAIL = 'lmelaskyriazi@college.harvard.edu,jianshi@cuhk.edu.hk'
+AUTHOR = 'Luke,JianS'
 REQUIRES_PYTHON = '>=3.5.0'
 VERSION = '0.5.1'
 

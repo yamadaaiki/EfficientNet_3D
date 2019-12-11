@@ -1,10 +1,9 @@
-from efficientnet_pytorch import EfficientNet
-import numpy as np
+from efficientnet_pytorch_3d import EfficientNet3D
 import torch
-
-model = EfficientNet.from_name("efficientnet-b0", override_params={'num_classes': 2})
-
 from torchsummary import summary
+
+model = EfficientNet3D.from_name("efficientnet-b0", override_params={'num_classes': 2}, in_channels=1)
+
 summary(model, input_size=(1, 200, 1024, 200))
 
 model = model.to("cuda:3")
