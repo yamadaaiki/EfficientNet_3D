@@ -1,5 +1,21 @@
 # EfficientNet PyTorch
 
+3D Version is based on top of [EfficientNet-Pytorch](https://github.com/lukemelas/EfficientNet-PyTorch).
+
+3D EfficientNet has a high GPU cost. Here, the ```block_args``` for the first block is altered from ```'r1_k3_s111_e1_i32_o16_se0.25'``` to ```'r1_k3_s222_e1_i32_o16_se0.25'``` to save GPU memories.
+
+Take an example from EfficientNet-b0 with an input size of (1, 200, 200, 200):
+- Stide 1 for the first block will cost 8703.64 MB GPU Memories.
+- Strde 2 for the first block will cost 2023.29 MB GPU Memories.
+
+Take an example from EfficientNet-b0 with an input size of (1, 200, 1024, 200):
+- Stide 1 for the first block will cost 44387.63 MB GPU Memories, which will not be loaded into any single GPUs currently.
+- Strde 2 for the first block will cost 10283.67 MB GPU Memories, which is relatively acceptable.
+
+Mostly, we can save 4 times GPU memories by reducing the stride from the first block from 1 to 2.
+
+Below is the README from the original repo:
+
 ### Update (October 15, 2019)
 
 This update allows you to choose whether to use a memory-efficient Swish activation. The memory-efficient version is chosen by default, but it cannot be used when exporting using PyTorch JIT. For this purpose, we have also included a standard (export-friendly) swish activation function. To switch to the export-friendly version, simply call `model.set_swish(memory_efficient=False)` after loading your desired model. This update addresses issues [#88](https://github.com/lukemelas/EfficientNet-PyTorch/pull/88) and [#89](https://github.com/lukemelas/EfficientNet-PyTorch/pull/89).

@@ -85,63 +85,65 @@ def drop_connect(inputs, p, training):
     batch_size = inputs.shape[0]
     keep_prob = 1 - p
     random_tensor = keep_prob
-    random_tensor += torch.rand([batch_size, 1, 1, 1], dtype=inputs.dtype, device=inputs.device)
+    random_tensor += torch.rand([batch_size, 1, 1, 1, 1], dtype=inputs.dtype, device=inputs.device)
     binary_tensor = torch.floor(random_tensor)
     output = inputs / keep_prob * binary_tensor
     return output
 
 
-def get_same_padding_conv2d(image_size=None):
+def get_same_padding_conv3d(image_size=None):
     """ Chooses static padding if you have specified an image size, and dynamic padding otherwise.
         Static padding is necessary for ONNX exporting of models. """
     if image_size is None:
-        return Conv2dDynamicSamePadding
+        return Conv3dDynamicSamePadding
     else:
-        return partial(Conv2dStaticSamePadding, image_size=image_size)
+        return partial(Conv3dStaticSamePadding, image_size=image_size)
 
 
-class Conv2dDynamicSamePadding(nn.Conv2d):
-    """ 2D Convolutions like TensorFlow, for a dynamic image size """
+class Conv3dDynamicSamePadding(nn.Conv3d):
+    """ 3D Convolutions like TensorFlow, for a dynamic image size """
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1, groups=1, bias=True):
         super().__init__(in_channels, out_channels, kernel_size, stride, 0, dilation, groups, bias)
-        self.stride = self.stride if len(self.stride) == 2 else [self.stride[0]] * 2
+        self.stride = self.stride if len(self.stride) == 3 else [self.stride[0]] * 3
 
     def forward(self, x):
-        ih, iw = x.size()[-2:]
-        kh, kw = self.weight.size()[-2:]
-        sh, sw = self.stride
-        oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
+        ih, iw, iz = x.size()[-3:]
+        kh, kw, kz = self.weight.size()[-3:]
+        sh, sw, sz = self.stride
+        oh, ow, oz = math.ceil(ih / sh), math.ceil(iw / sw), math.ceil(iz / oz)
         pad_h = max((oh - 1) * self.stride[0] + (kh - 1) * self.dilation[0] + 1 - ih, 0)
         pad_w = max((ow - 1) * self.stride[1] + (kw - 1) * self.dilation[1] + 1 - iw, 0)
-        if pad_h > 0 or pad_w > 0:
-            x = F.pad(x, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
-        return F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        pad_z = max((oz - 1) * self.stride[2] + (kz - 1) * self.dilation[2] + 1 - iz, 0)
+        if pad_h > 0 or pad_w > 0 or pad_z > 0:
+            x = F.pad(x, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2, pad_z // 2, pad_z - pad_z // 2])
+        return F.conv3d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
 
-class Conv2dStaticSamePadding(nn.Conv2d):
-    """ 2D Convolutions like TensorFlow, for a fixed image size"""
+class Conv3dStaticSamePadding(nn.Conv3d):
+    """ 3D Convolutions like TensorFlow, for a fixed image size"""
 
     def __init__(self, in_channels, out_channels, kernel_size, image_size=None, **kwargs):
         super().__init__(in_channels, out_channels, kernel_size, **kwargs)
-        self.stride = self.stride if len(self.stride) == 2 else [self.stride[0]] * 2
+        self.stride = self.stride if len(self.stride) == 3 else [self.stride[0]] * 3
 
         # Calculate padding based on image size and save it
         assert image_size is not None
-        ih, iw = image_size if type(image_size) == list else [image_size, image_size]
-        kh, kw = self.weight.size()[-2:]
-        sh, sw = self.stride
-        oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
+        ih, iw, iz = image_size if type(image_size) == list else [image_size, image_size, image_size]
+        kh, kw, kz = self.weight.size()[-3:]
+        sh, sw, sz = self.stride
+        oh, ow, oz = math.ceil(ih / sh), math.ceil(iw / sw), math.ceil(iz / sz)
         pad_h = max((oh - 1) * self.stride[0] + (kh - 1) * self.dilation[0] + 1 - ih, 0)
         pad_w = max((ow - 1) * self.stride[1] + (kw - 1) * self.dilation[1] + 1 - iw, 0)
-        if pad_h > 0 or pad_w > 0:
-            self.static_padding = nn.ZeroPad2d((pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2))
+        pad_z = max((oz - 1) * self.stride[2] + (kz - 1) * self.dilation[2] + 1 - iz, 0)
+        if pad_h > 0 or pad_w > 0 or pad_z > 0:
+            self.static_padding = nn.ZeroPad2d((pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2, pad_z // 2, pad_z - pad_z // 2))
         else:
             self.static_padding = Identity()
 
     def forward(self, x):
         x = self.static_padding(x)
-        x = F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        x = F.conv3d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
         return x
 
 
@@ -192,7 +194,7 @@ class BlockDecoder(object):
 
         # Check stride
         assert (('s' in options and len(options['s']) == 1) or
-                (len(options['s']) == 2 and options['s'][0] == options['s'][1]))
+                (len(options['s']) == 3 and options['s'][0] == options['s'][1] == options['s'][2]))
 
         return BlockArgs(
             kernel_size=int(options['k']),
@@ -210,7 +212,7 @@ class BlockDecoder(object):
         args = [
             'r%d' % block.num_repeat,
             'k%d' % block.kernel_size,
-            's%d%d' % (block.strides[0], block.strides[1]),
+            's%d%d%d' % (block.strides[0], block.strides[1], block.strides[2]),
             'e%s' % block.expand_ratio,
             'i%d' % block.input_filters,
             'o%d' % block.output_filters
@@ -254,10 +256,10 @@ def efficientnet(width_coefficient=None, depth_coefficient=None, dropout_rate=0.
     """ Creates a efficientnet model. """
 
     blocks_args = [
-        'r1_k3_s11_e1_i32_o16_se0.25', 'r2_k3_s22_e6_i16_o24_se0.25',
-        'r2_k5_s22_e6_i24_o40_se0.25', 'r3_k3_s22_e6_i40_o80_se0.25',
-        'r3_k5_s11_e6_i80_o112_se0.25', 'r4_k5_s22_e6_i112_o192_se0.25',
-        'r1_k3_s11_e6_i192_o320_se0.25',
+        'r1_k3_s222_e1_i32_o16_se0.25', 'r2_k3_s222_e6_i16_o24_se0.25',
+        'r2_k5_s222_e6_i24_o40_se0.25', 'r3_k3_s222_e6_i40_o80_se0.25',
+        'r3_k5_s111_e6_i80_o112_se0.25', 'r4_k5_s222_e6_i112_o192_se0.25',
+        'r1_k3_s111_e6_i192_o320_se0.25',
     ]
     blocks_args = BlockDecoder.decode(blocks_args)
 
