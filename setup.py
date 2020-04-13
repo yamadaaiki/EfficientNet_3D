@@ -18,7 +18,7 @@ URL = 'https://github.com/shijianjian/efficientnet_pytorch_3d'
 EMAIL = 'lmelaskyriazi@college.harvard.edu,jianshi@cuhk.edu.hk'
 AUTHOR = 'Luke,JianS'
 REQUIRES_PYTHON = '>=3.5.0'
-VERSION = '0.5.1'
+VERSION = '0.6.3'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
