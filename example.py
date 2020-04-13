@@ -2,13 +2,15 @@ from efficientnet_pytorch_3d import EfficientNet3D
 import torch
 from torchsummary import summary
 
+device = 'cpu'
+
 model = EfficientNet3D.from_name("efficientnet-b0", override_params={'num_classes': 2}, in_channels=1)
 
-summary(model, input_size=(1, 200, 1024, 200))
+summary(model, input_size=(1, 224, 224, 224))
 
-model = model.to("cuda:3")
-inputs = torch.randn((1, 1, 200, 1024, 200)).to("cuda:3")
-labels = torch.tensor([0]).to("cuda:3")
+model = model.to(device)
+inputs = torch.randn((1, 1, 224, 224, 224)).to(device)
+labels = torch.tensor([0]).to(device)
 # test forward
 num_classes = 2
 
