@@ -2,6 +2,11 @@
 
 3D Version is based on top of [EfficientNet-Pytorch](https://github.com/lukemelas/EfficientNet-PyTorch).
 
+For similar usage, you may install like:
+```bash
+pip install git+https://github.com/shijianjian/EfficientNet-PyTorch-3D
+```
+
 ```python
 from efficientnet_pytorch_3d import EfficientNet3D
 import torch
